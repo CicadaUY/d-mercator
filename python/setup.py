@@ -134,7 +134,7 @@ setup(
     long_description='',
     install_requires=['pybind11>=2.3'],
     setup_requires=['pybind11>=2.3'],
-    ext_modules=[CMakeExtension("pymercator")],
+    ext_modules=[CMakeExtension("pymercator", sourcedir=os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))],
     cmdclass={"build_ext": CMakeBuild},
     zip_safe=False,
 )
