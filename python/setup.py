@@ -1,13 +1,14 @@
-from setuptools import setup, Extension
-from setuptools.command.build_ext import build_ext
-import sys
 import os
-import setuptools
-from pathlib import Path
-import re 
+import re
 import subprocess
+import sys
+from pathlib import Path
 
-__version__ = '1.0.0'
+import setuptools
+from setuptools import Extension, setup
+from setuptools.command.build_ext import build_ext
+
+__version__ = "1.0.0"
 
 
 # Convert distutils Windows platform specifiers to CMake -A arguments
@@ -17,6 +18,7 @@ PLAT_TO_CMAKE = {
     "win-arm32": "ARM",
     "win-arm64": "ARM64",
 }
+
 
 class CMakeExtension(Extension):
     def __init__(self, name: str, sourcedir: str = "") -> None:
@@ -48,6 +50,26 @@ class CMakeBuild(build_ext):
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
         ]
+
+        # Add OpenMP paths for macOS
+        if sys.platform.startswith("darwin"):
+            import subprocess as sp
+
+            try:
+                libomp_prefix = (
+                    sp.check_output(["brew", "--prefix", "libomp"]).decode().strip()
+                )
+                cmake_args.extend(
+                    [
+                        f"-DOpenMP_C_FLAGS=-Xpreprocessor -fopenmp -I{libomp_prefix}/include",
+                        f"-DOpenMP_C_LIB_NAMES=omp",
+                        f"-DOpenMP_CXX_FLAGS=-Xpreprocessor -fopenmp -I{libomp_prefix}/include",
+                        f"-DOpenMP_CXX_LIB_NAMES=omp",
+                        f"-DOpenMP_omp_LIBRARY={libomp_prefix}/lib/libomp.dylib",
+                    ]
+                )
+            except:
+                pass
         build_args = []
         # Adding CMake arguments set as environment variable
         # (needed e.g. to build for ARM OSx on conda-forge)
@@ -55,7 +77,7 @@ class CMakeBuild(build_ext):
             cmake_args += [item for item in os.environ["CMAKE_ARGS"].split(" ") if item]
 
         # In this example, we pass in the version to C++. You might not need to.
-        #cmake_args += [f"-DEXAMPLE_VERSION_INFO={self.distribution.get_version()}"]  # type: ignore[attr-defined]
+        # cmake_args += [f"-DEXAMPLE_VERSION_INFO={self.distribution.get_version()}"]  # type: ignore[attr-defined]
 
         if self.compiler.compiler_type != "msvc":
             # Using Ninja-build since it a) is available as a wheel and b)
@@ -114,7 +136,7 @@ class CMakeBuild(build_ext):
         build_temp = Path(self.build_temp) / ext.name
         if not build_temp.exists():
             build_temp.mkdir(parents=True)
-        
+
         print("Here ", ext.sourcedir)
         subprocess.run(
             ["cmake", ext.sourcedir] + cmake_args, cwd=build_temp, check=True
@@ -125,16 +147,20 @@ class CMakeBuild(build_ext):
 
 
 setup(
-    name='dmercator',
+    name="dmercator",
     version=__version__,
-    author='Robert Jankowski',
-    author_email='',
-    url='robertjankowski.github.io',
-    description='D-Mercator',
-    long_description='',
-    install_requires=['pybind11>=2.3'],
-    setup_requires=['pybind11>=2.3'],
-    ext_modules=[CMakeExtension("pymercator", sourcedir=os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))],
+    author="Robert Jankowski",
+    author_email="",
+    url="robertjankowski.github.io",
+    description="D-Mercator",
+    long_description="",
+    install_requires=["pybind11>=2.3"],
+    setup_requires=["pybind11>=2.3"],
+    ext_modules=[
+        CMakeExtension(
+            "dmercator", sourcedir=os.path.abspath(os.path.dirname(__file__))
+        )
+    ],
     cmdclass={"build_ext": CMakeBuild},
     zip_safe=False,
 )
