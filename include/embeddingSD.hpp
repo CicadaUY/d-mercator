@@ -1019,7 +1019,8 @@ void embeddingSD_t::embed()
 {
   if (DIMENSION > 1) {
     embed(DIMENSION);
-    exit(0);
+    //exit(0);
+    return;
   }
   // Gets current time.
   time0 = time_since_epoch_in_seconds();
